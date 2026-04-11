@@ -61,25 +61,28 @@ app.use(express.urlencoded({ extended: false }));
 app.use(passport.initialize());
 require('./config/passport')(passport);
 
-// Connect to MongoDB, then start server
+// Routes
+app.use('/api/auth',   authRoutes);
+app.use('/api/plaid',  plaidRoutes);
+app.use('/api/alerts', alertRoutes);
+app.use('/api/admin',  adminRoutes);
+app.use('/api/finch',  finchRoutes);
+
+// Health check
+app.get('/health', (_req, res) =>
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+);
+
+// Start listening immediately so Railway health checks pass
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+});
+
+// Connect to MongoDB and seed admin after server is up
 connectDB().then(async () => {
   await seedAdmin();
-
-  // Routes
-  app.use('/api/auth',   authRoutes);
-  app.use('/api/plaid',  plaidRoutes);
-  app.use('/api/alerts', alertRoutes);
-  app.use('/api/admin',  adminRoutes);
-  app.use('/api/finch',  finchRoutes);
-
-  // Health check
-  app.get('/health', (_req, res) =>
-    res.json({ status: 'ok', timestamp: new Date().toISOString() })
-  );
-
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
-    startAlertWorker();
-  });
+  startAlertWorker();
+}).catch((err) => {
+  console.error('MongoDB connection failed:', err.message);
 });
