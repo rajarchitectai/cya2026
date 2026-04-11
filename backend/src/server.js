@@ -77,15 +77,6 @@ connectDB().then(async () => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })
   );
 
-  // Serve built frontend in production (single-container deploy)
-  if (process.env.NODE_ENV === 'production') {
-    const frontendDist = path.join(__dirname, '../../frontend/dist');
-    app.use(express.static(frontendDist));
-    app.get('*', (_req, res) =>
-      res.sendFile(path.join(frontendDist, 'index.html'))
-    );
-  }
-
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
