@@ -1,0 +1,54 @@
+services:
+  mongo:
+    image: mongo:6
+    platform: linux/amd64
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - NODE_ENV=development
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - PORT=5000
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_FNAME=${ADMIN_FNAME}
+      - PLAID_CLIENT_ID=${PLAID_CLIENT_ID}
+      - PLAID_SECRET=${PLAID_SECRET}
+      - PLAID_ENV=${PLAID_ENV:-development}
+      - FINCH_CLIENT_ID=${FINCH_CLIENT_ID}
+      - FINCH_CLIENT_SECRET=${FINCH_CLIENT_SECRET}
+      - FINCH_ENV=${FINCH_ENV:-sandbox}
+    ports:
+      - "5001:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
