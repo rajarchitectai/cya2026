@@ -21,7 +21,6 @@ router.post('/connect-url', authenticate, (req, res) => {
     client_id:    process.env.FINCH_CLIENT_ID,
     products:     PRODUCTS,
     redirect_uri: redirectUri,
-    sandbox:      'finch',
   };
 
   const url = `${FINCH_AUTH}?` + new URLSearchParams(params).toString();
