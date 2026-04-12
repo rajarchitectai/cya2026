@@ -23,6 +23,10 @@ router.post('/connect-url', authenticate, (req, res) => {
     redirect_uri: redirectUri,
   };
 
+  if (process.env.FINCH_ENV === 'sandbox') {
+    params.sandbox = 'finch';
+  }
+
   const url = `${FINCH_AUTH}?` + new URLSearchParams(params).toString();
 
   console.log('[Finch] Connect URL:', url);
