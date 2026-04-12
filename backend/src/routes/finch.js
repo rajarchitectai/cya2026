@@ -93,6 +93,52 @@ router.post('/exchange', authenticate, async (req, res) => {
   }
 });
 
+// POST /api/finch/sandbox-connect — create a sandbox test connection directly
+router.post('/sandbox-connect', authenticate, async (req, res) => {
+  try {
+    const clientId     = process.env.FINCH_CLIENT_ID;
+    const clientSecret = process.env.FINCH_CLIENT_SECRET;
+    const credentials  = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    // Create a sandbox connection for Gusto (test provider)
+    const sandboxRes = await axios.post(
+      `${FINCH_API}/sandbox/connections`,
+      { provider_id: 'gusto', products: ['company', 'directory', 'individual', 'employment'] },
+      { headers: {
+          Authorization:       `Basic ${credentials}`,
+          'Content-Type':      'application/json',
+          'Finch-API-Version': '2020-09-17',
+        }
+      }
+    );
+
+    const accessToken = sandboxRes.data.access_token;
+
+    // Fetch company info
+    let companyName = 'Sandbox Company';
+    let companyId   = 'sandbox-' + Date.now();
+    try {
+      const companyRes = await axios.get(`${FINCH_API}/employer/company`, {
+        headers: { Authorization: `Bearer ${accessToken}`, 'Finch-API-Version': '2020-09-17' },
+      });
+      companyName = companyRes.data.legal_name || companyName;
+      companyId   = companyRes.data.id         || companyId;
+    } catch (_) {}
+
+    const connection = await FinchConnection.findOneAndUpdate(
+      { userId: req.user._id, companyId },
+      { userId: req.user._id, accessToken, provider: 'gusto', companyId, companyName,
+        products: ['company', 'directory', 'individual', 'employment'], connectedAt: new Date() },
+      { upsert: true, new: true }
+    );
+
+    res.json(connection);
+  } catch (err) {
+    console.error('Finch sandbox connect error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.message || 'Failed to create sandbox connection.' });
+  }
+});
+
 // GET /api/finch/connections — list user's Finch connections
 router.get('/connections', authenticate, async (req, res) => {
   try {

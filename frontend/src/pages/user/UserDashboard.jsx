@@ -36,6 +36,19 @@ function FinchConnectButton({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
 
+  const handleSandboxConnect = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/finch/sandbox-connect');
+      onSuccess?.(data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to connect sandbox account.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConnect = async () => {
     setLoading(true);
     setError('');
@@ -77,9 +90,12 @@ function FinchConnectButton({ onSuccess }) {
   };
 
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       <button onClick={handleConnect} disabled={loading} className="btn-primary">
         {loading ? 'Connecting…' : '+ Connect Payroll'}
+      </button>
+      <button onClick={handleSandboxConnect} disabled={loading} className="btn-secondary text-xs">
+        {loading ? 'Connecting…' : '+ Connect Test Account (Sandbox)'}
       </button>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
