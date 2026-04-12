@@ -7,7 +7,7 @@ const router = express.Router();
 
 const FINCH_API  = 'https://api.tryfinch.com';
 const FINCH_AUTH = 'https://connect.tryfinch.com/authorize';
-const PRODUCTS   = 'company directory individual employment payment pay_statement';
+const PRODUCTS   = 'company directory individual employment';
 
 // POST /api/finch/connect-url — return the Finch OAuth URL
 router.post('/connect-url', authenticate, (req, res) => {
