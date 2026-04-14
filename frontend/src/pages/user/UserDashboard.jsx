@@ -90,12 +90,9 @@ function FinchConnectButton({ onSuccess }) {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div>
       <button onClick={handleConnect} disabled={loading} className="btn-primary">
         {loading ? 'Connecting…' : '+ Connect Payroll'}
-      </button>
-      <button onClick={handleSandboxConnect} disabled={loading} className="btn-secondary text-xs">
-        {loading ? 'Connecting…' : '+ Connect Test Account (Sandbox)'}
       </button>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
