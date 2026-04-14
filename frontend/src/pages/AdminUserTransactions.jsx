@@ -208,9 +208,9 @@ export default function AdminUserTransactions() {
                     <button
                       onClick={() => handleImport(acc._id)}
                       disabled={importing === acc._id}
-                      className="btn-secondary text-xs"
+                      className="btn-primary text-xs"
                     >
-                      {importing === acc._id ? 'Importing…' : 'Import'}
+                      {importing === acc._id ? 'Importing…' : '↓ Import'}
                     </button>
                     <Link
                       to={`/users/${userId}/alerts/${acc._id}`}
