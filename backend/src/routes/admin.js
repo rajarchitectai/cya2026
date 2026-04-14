@@ -1,10 +1,11 @@
-const express = require('express');
-const { requireAdmin } = require('../middleware/auth');
-const User             = require('../models/User');
-const Account          = require('../models/Account');
-const Transaction      = require('../models/Transaction');
-const Alert            = require('../models/Alert');
-const FinchConnection  = require('../models/FinchConnection');
+const express            = require('express');
+const mongoose           = require('mongoose');
+const { requireAdmin }   = require('../middleware/auth');
+const User               = require('../models/User');
+const Account            = require('../models/Account');
+const Transaction        = require('../models/Transaction');
+const Alert              = require('../models/Alert');
+const FinchConnection    = require('../models/FinchConnection');
 
 const router = express.Router();
 
@@ -85,8 +86,11 @@ router.get('/users/:userId/transactions', async (req, res) => {
     const limit  = Math.min(parseInt(req.query.limit) || 100, 500);
     const offset = parseInt(req.query.offset) || 0;
 
-    const filter = { userId: req.params.userId };
-    if (req.query.accountId) filter.accountId = req.query.accountId;
+    const filter = { userId: new mongoose.Types.ObjectId(req.params.userId) };
+    if (req.query.accountId) {
+      try { filter.accountId = new mongoose.Types.ObjectId(req.query.accountId); }
+      catch (_) { filter.accountId = req.query.accountId; }
+    }
     if (req.query.from || req.query.to) {
       filter.txnDate = {};
       if (req.query.from) filter.txnDate.$gte = req.query.from;
