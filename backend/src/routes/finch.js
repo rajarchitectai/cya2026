@@ -9,28 +9,48 @@ const FINCH_API  = 'https://api.tryfinch.com';
 const FINCH_AUTH = 'https://connect.tryfinch.com/authorize';
 const PRODUCTS   = 'company directory individual employment';
 
-// POST /api/finch/connect-url — return the Finch OAuth URL
-router.post('/connect-url', authenticate, (req, res) => {
+// POST /api/finch/connect-url — create a Finch Connect session and return connect_url
+router.post('/connect-url', authenticate, async (req, res) => {
   if (!process.env.FINCH_CLIENT_ID || process.env.FINCH_CLIENT_ID === 'your_finch_client_id') {
     return res.status(503).json({ error: 'Finch credentials not configured. Add FINCH_CLIENT_ID to .env' });
   }
 
   const redirectUri = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/user/finch-callback`;
+  const credentials = Buffer.from(
+    `${process.env.FINCH_CLIENT_ID}:${process.env.FINCH_CLIENT_SECRET}`
+  ).toString('base64');
 
-  const params = {
-    client_id:    process.env.FINCH_CLIENT_ID,
-    products:     PRODUCTS,
-    redirect_uri: redirectUri,
-  };
+  try {
+    const body = {
+      customer_id:   req.user._id.toString(),
+      customer_name: `${req.user.fname} ${req.user.lname || ''}`.trim(),
+      products:      PRODUCTS.split(' '),
+      redirect_uri:  redirectUri,
+    };
 
-  if (process.env.FINCH_ENV === 'sandbox') {
-    params.sandbox = 'finch';
+    if (process.env.FINCH_ENV === 'sandbox') {
+      body.sandbox = 'finch';
+    }
+
+    const sessionRes = await axios.post(
+      `${FINCH_API}/connect/sessions`,
+      body,
+      {
+        headers: {
+          Authorization:       `Basic ${credentials}`,
+          'Content-Type':      'application/json',
+          'Finch-API-Version': '2020-09-17',
+        },
+      }
+    );
+
+    const connectUrl = sessionRes.data.connect_url;
+    console.log('[Finch] Session created, connect_url:', connectUrl);
+    res.json({ url: connectUrl });
+  } catch (err) {
+    console.error('[Finch] Session creation error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.message || 'Failed to create Finch session.' });
   }
-
-  const url = `${FINCH_AUTH}?` + new URLSearchParams(params).toString();
-
-  console.log('[Finch] Connect URL:', url);
-  res.json({ url });
 });
 
 // POST /api/finch/exchange — exchange authorization_code for access_token
