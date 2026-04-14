@@ -12,6 +12,7 @@ export default function AdminUserTransactions() {
   const [user,        setUser]        = useState(null);
   const [accounts,    setAccounts]    = useState([]);
   const [alerts,      setAlerts]      = useState([]);
+  const [importing,   setImporting]   = useState(null);
   const [txns,        setTxns]        = useState([]);
   const [total,       setTotal]       = useState(0);
   const [loading,     setLoading]     = useState(false);
@@ -69,6 +70,19 @@ export default function AdminUserTransactions() {
   const handleApply = (e) => {
     e.preventDefault();
     fetchTxns(from, to, accountId);
+  };
+
+  const handleImport = async (accId) => {
+    setImporting(accId);
+    try {
+      const { data } = await api.post(`/admin/users/${userId}/accounts/${accId}/import`);
+      alert(`Imported ${data.imported} of ${data.total} transactions.`);
+      fetchTxns(from, to, accountId);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Import failed.');
+    } finally {
+      setImporting(null);
+    }
   };
 
   const handleReset = () => {
@@ -190,12 +204,21 @@ export default function AdminUserTransactions() {
                       </p>
                     )}
                   </div>
-                  <Link
-                    to={`/users/${userId}/alerts/${acc._id}`}
-                    className="btn-secondary text-xs"
-                  >
-                    {existingAlert ? 'Edit Alert' : 'Set Alert'}
-                  </Link>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleImport(acc._id)}
+                      disabled={importing === acc._id}
+                      className="btn-secondary text-xs"
+                    >
+                      {importing === acc._id ? 'Importing…' : 'Import'}
+                    </button>
+                    <Link
+                      to={`/users/${userId}/alerts/${acc._id}`}
+                      className="btn-secondary text-xs"
+                    >
+                      {existingAlert ? 'Edit Alert' : 'Set Alert'}
+                    </Link>
+                  </div>
                 </div>
               );
             })}

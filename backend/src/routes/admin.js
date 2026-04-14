@@ -79,6 +79,64 @@ router.get('/users/:userId/accounts', async (req, res) => {
   }
 });
 
+// ── POST /api/admin/users/:userId/accounts/:accountId/import ─────────────────
+router.post('/users/:userId/accounts/:accountId/import', async (req, res) => {
+  try {
+    const account = await Account.findOne({ _id: req.params.accountId, userId: req.params.userId });
+    if (!account) return res.status(404).json({ error: 'Account not found.' });
+
+    const { PlaidApi, Configuration, PlaidEnvironments } = require('plaid');
+    const moment = require('moment');
+
+    const env = process.env.PLAID_ENV || 'sandbox';
+    const plaidClient = new PlaidApi(new Configuration({
+      basePath: PlaidEnvironments[env],
+      baseOptions: { headers: {
+        'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
+        'PLAID-SECRET':    process.env.PLAID_SECRET,
+      }},
+    }));
+
+    const today       = moment().format('YYYY-MM-DD');
+    const twoYearsAgo = moment().subtract(2, 'years').format('YYYY-MM-DD');
+
+    const response = await plaidClient.transactionsGet({
+      access_token: account.accessToken,
+      start_date:   twoYearsAgo,
+      end_date:     today,
+      options: { count: 500 },
+    });
+
+    const docs = response.data.transactions.map((t) => ({
+      _id:         t.transaction_id,
+      userId:      account.userId,
+      accountId:   account._id,
+      accessToken: account.accessToken,
+      accountName: account.institutionName,
+      name:        t.name,
+      amount:      t.amount,
+      txnDate:     t.date,
+      category:    t.category?.[0] || '',
+      pending:     t.pending || false,
+    }));
+
+    let inserted = 0;
+    try {
+      const result = await Transaction.insertMany(docs, { ordered: false });
+      inserted = result.length;
+    } catch (err) {
+      if (err.code === 11000 || err.name === 'BulkWriteError') {
+        inserted = err.result?.nInserted ?? 0;
+      } else throw err;
+    }
+
+    res.json({ imported: inserted, total: docs.length });
+  } catch (err) {
+    console.error('Admin import error:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Failed to import transactions.' });
+  }
+});
+
 // ── GET /api/admin/users/:userId/transactions ────────────────────────────────
 // Supports ?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=&offset=
 router.get('/users/:userId/transactions', async (req, res) => {
@@ -97,6 +155,8 @@ router.get('/users/:userId/transactions', async (req, res) => {
       if (req.query.to)   filter.txnDate.$lte = req.query.to;
     }
 
+    console.log('[Admin Txns] filter:', JSON.stringify(filter));
+
     const [txns, total] = await Promise.all([
       Transaction.find(filter)
         .sort({ txnDate: -1 })
@@ -106,6 +166,7 @@ router.get('/users/:userId/transactions', async (req, res) => {
       Transaction.countDocuments(filter),
     ]);
 
+    console.log('[Admin Txns] found:', total, 'transactions');
     res.json({ transactions: txns, total });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch transactions.' });
