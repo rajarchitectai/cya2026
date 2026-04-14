@@ -86,6 +86,7 @@ router.get('/users/:userId/transactions', async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
 
     const filter = { userId: req.params.userId };
+    if (req.query.accountId) filter.accountId = req.query.accountId;
     if (req.query.from || req.query.to) {
       filter.txnDate = {};
       if (req.query.from) filter.txnDate.$gte = req.query.from;
